@@ -1,3 +1,4 @@
+# coding: utf-8
 """
 ARCHES - a program developed to inventory and manage immovable cultural heritage.
 Copyright (C) 2013 J. Paul Getty Trust and World Monuments Fund
@@ -216,7 +217,7 @@ class SKOSReader(object):
                                     'type': 'member', 'target': self.generate_uuid_from_subject(baseuuid, o)})
 
             if bar is True:
-                bar_nodes = pyprind.ProgBar(len(self.nodes),bar_char='X',title='loading concept nodes')
+                bar_nodes = pyprind.ProgBar(len(self.nodes),bar_char='█',title='loading concept nodes')
             # insert and index the concpets
             scheme_node = None
             with transaction.atomic():
@@ -239,8 +240,8 @@ class SKOSReader(object):
                         bar_nodes.update()
                 # print('===for4A===',(time() - for4A))
                 if bar is True:
-                    bar_relations = pyprind.ProgBar(len(self.relations),bar_char='X',title='loading concept relations')
-                    bar_member_relations = pyprind.ProgBar(len(self.member_relations),bar_char='X',title='loading member relations')
+                    bar_relations = pyprind.ProgBar(len(self.relations),bar_char='█',title='loading concept relations')
+                    bar_member_relations = pyprind.ProgBar(len(self.member_relations),bar_char='█',title='loading member relations')
 
                 # insert the concept relations
                 for4B = time()

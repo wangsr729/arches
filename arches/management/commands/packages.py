@@ -1,3 +1,4 @@
+# coding: utf-8
 import unicodecsv
 import json
 import pyprind
@@ -560,7 +561,7 @@ class Command(BaseCommand):
                 concept_data.extend(glob.glob(os.path.join(
                     package_dir, 'reference_data', 'concepts', file_type)))
             if verbose is False:
-                bar_concepts = pyprind.ProgBar(len(concept_data),bar_char='X')
+                bar_concepts = pyprind.ProgBar(len(concept_data),bar_char='█')
 
             bar = (len(concept_data) == 1 and verbose is False)
             for path in concept_data:
@@ -576,7 +577,7 @@ class Command(BaseCommand):
                     package_dir, 'reference_data', 'collections', file_type)))
             bar = (len(collection_data) == 1 and verbose is False)
             if verbose is False and bar is False:
-                bar_collections = pyprind.ProgBar(len(collection_data), title='loading concept collections',bar_char='X')
+                bar_collections = pyprind.ProgBar(len(collection_data), title='loading concept collections',bar_char='█')
             for path in collection_data:
                 self.import_reference_data(path, overwrite, stage, bar)
                 if bar is False and verbose is False:

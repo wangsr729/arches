@@ -87,7 +87,6 @@ class SKOSReader(object):
 
         # if the graph is of the type rdflib.graph.Graph
         if isinstance(graph, Graph):
-            # for1 = time()
             # Search for ConceptSchemes first
             for scheme, v, o in graph.triples((None, RDF.type, SKOS.ConceptScheme)):
                 identifier = self.unwrapJsonLiteral(str(scheme))
@@ -98,7 +97,6 @@ class SKOSReader(object):
                     'nodetype': 'ConceptScheme'
                 })
 
-                # for1A = time()
                 for predicate, object in graph.predicate_objects(subject=scheme):
                     if str(DCTERMS) in predicate and predicate.replace(DCTERMS, '') in dcterms_value_types.values_list('valuetype', flat=True):
                         if not self.language_exists(object, allowed_languages):
@@ -128,7 +126,6 @@ class SKOSReader(object):
                             top_concept_id = self.generate_uuid_from_subject(baseuuid, object)
                             self.relations.append(
                                 {'source': scheme_id, 'type': 'hasTopConcept', 'target': top_concept_id})
-                # print('===for1A===',(time() - for1A))
 
                 concept_scheme.addvalue({'id': identifier['value_id'], 'value': identifier[
                                         'value'], 'language': default_lang, 'type': dcterms_identifier_type.valuetype, 'category': dcterms_identifier_type.category})
@@ -144,7 +141,6 @@ class SKOSReader(object):
                     })
 
                     # loop through all the elements within a <skos:Concept> element
-                    # for1B = time()
                     for predicate, object in graph.predicate_objects(subject=s):
                         if str(SKOS) in predicate or str(ARCHES) in predicate:
                             if not self.language_exists(object, allowed_languages):
@@ -175,9 +171,7 @@ class SKOSReader(object):
                     concept.addvalue({'id': identifier['value_id'], 'value': identifier[
                                      'value'], 'language': default_lang, 'type': dcterms_identifier_type.valuetype, 'category': dcterms_identifier_type.category})
                     self.nodes.append(concept)
-                    # print('===for1B===',(time() - for1B))
 
-            # print('===for1===',(time() - for1))
 
             # Search for SKOS.Collections
             for s, v, o in graph.triples((None, RDF.type, SKOS.Collection)):
@@ -188,7 +182,6 @@ class SKOSReader(object):
                     'nodetype': 'Collection'
                 })
                 # loop through all the elements within a <skos:Concept> element
-                for2 = time()
                 for predicate, object in graph.predicate_objects(subject=s):
                     if str(SKOS) in predicate or str(ARCHES) in predicate:
                         if not self.language_exists(object, allowed_languages):
@@ -221,7 +214,6 @@ class SKOSReader(object):
             # insert and index the concpets
             scheme_node = None
             with transaction.atomic():
-                for4A = time()
                 for node in self.nodes:
                     if node.nodetype == 'ConceptScheme':
                         scheme_node = node
@@ -238,13 +230,12 @@ class SKOSReader(object):
                             node.save()
                     if bar is True:
                         bar_nodes.update()
-                # print('===for4A===',(time() - for4A))
+
                 if bar is True:
                     bar_relations = pyprind.ProgBar(len(self.relations),bar_char='█',title='loading concept relations')
                     bar_member_relations = pyprind.ProgBar(len(self.member_relations),bar_char='█',title='loading member relations')
 
                 # insert the concept relations
-                for4B = time()
                 for relation in self.relations:
                     newrelation = models.Relation.objects.get_or_create(
                         conceptfrom_id=relation['source'],
@@ -253,7 +244,6 @@ class SKOSReader(object):
                     )
                     if bar is True:
                         bar_relations.update()
-                # print('===for4B===',(time() - for4B))
                 
                 # need to index after the concepts and relations have been entered into the db
                 # so that the proper context gets indexed with the concept
@@ -262,7 +252,6 @@ class SKOSReader(object):
 
             # insert the concept collection relations
             # we do this outide a transaction so that we can load incomplete collections
-            for5 = time()
             for relation in self.member_relations:
                 try:
                     newrelation = models.Relation.objects.get_or_create(

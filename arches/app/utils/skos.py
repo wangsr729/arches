@@ -60,7 +60,7 @@ class SKOSReader(object):
         start = time()
         try:
             rdf = rdf_graph.parse(source=path_to_file, format=format)
-            # print 'time elapsed to parse rdf graph %s s' % (time() - start)
+            #print 'time elapsed to parse rdf graph %s s' % (time() - start)
         except:
             raise Exception('Error occurred while parsing the file %s' % path_to_file)
         return rdf
@@ -75,6 +75,7 @@ class SKOSReader(object):
 
         """
         
+
         start = time()
         baseuuid = uuid.uuid4()
         allowed_languages = models.DLanguage.objects.values_list('pk', flat=True)
@@ -291,6 +292,27 @@ class SKOSReader(object):
                 # if bar is True:
                 #     bar_relations = pyprind.ProgBar(len(self.relations),bar_char='█',title='loading concept relations')
                 #     bar_member_relations = pyprind.ProgBar(len(self.member_relations),bar_char='█',title='loading member relations')
+                #         try:
+                #             models.Concept.objects.get(pk=node.id)
+                #         except:
+                #             # this is a new concept, so add a reference to it in the Candiates schema
+                #             if node.nodetype != 'ConceptScheme':
+                #                 self.relations.append(
+                #                     {'source': '00000000-0000-0000-0000-000000000006', 'type': 'narrower', 'target': node.id})
+
+                #     if overwrite_options == 'overwrite':
+                #         node.save()
+                #         #concepts.append(node)
+                #     elif overwrite_options == 'ignore':
+                #         try:
+                #             # don't do anything if the concept already exists
+                #             models.Concept.objects.get(pk=node.id)
+                #         except:
+                #             # else save it
+                #             node.save()
+                #             #concepts.append(node)
+
+                #Concept().bulk_save(concepts, None)
 
                 # insert the concept relations
                 relation_objs = []
@@ -308,6 +330,8 @@ class SKOSReader(object):
                     relation_objs.append(newrelation)
                     if bar is True:
                         bar_relations.update()
+
+                # models.Relation.objects.bulk_create(relation_objs)
                 
                 # need to index after the concepts and relations have been entered into the db
                 # so that the proper context gets indexed with the concept
@@ -334,6 +358,9 @@ class SKOSReader(object):
                 if bar is True:
                     bar_member_relations.update()
 
+            # models.Relation.objects.bulk_create(relation_objs)
+
+            print 'time elapsed to load rdf graph %s s' % (datetime.timedelta(seconds=time() - start))
             return scheme_node
         else:
             raise Exception('graph argument should be of type rdflib.graph.Graph')

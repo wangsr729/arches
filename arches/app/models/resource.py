@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import uuid
 import importlib
 import datetime
+from time import time
 from uuid import UUID
 from django.db import transaction
 from django.db.models import Q
@@ -150,6 +151,9 @@ class Resource(models.ResourceInstance):
         resources -- a list of resource models
 
         """
+        start = time()
+
+        print "saving resource to db"
 
         se = SearchEngineFactory().create()
         datatype_factory = DataTypeFactory()
@@ -159,31 +163,73 @@ class Resource(models.ResourceInstance):
         documents = []
         term_list = []
 
+        start = time()
+
         for resource in resources:
             resource.tiles = resource.get_flattened_tiles()
             tiles.extend(resource.tiles)
+
+        print "time to extend tiles: %s" % datetime.timedelta(seconds=time() - start)
+        start = time()
 
         # need to save the models first before getting the documents for index
         Resource.objects.bulk_create(resources)
         TileModel.objects.bulk_create(tiles)
 
+        print "time to bulk create tiles and resources: %s" % datetime.timedelta(seconds=time() - start)
+        start = time()
+
         for resource in resources:
             resource.save_edit(edit_type='create')
+
+        print "time to save resource edits: %s" % datetime.timedelta(seconds=time() - start)
+        start = time()
+
+        time_to_get_docs = 0
+        time_to_get_root_ontology = 0
+        time_to_create_bulk_docs = 0
+        time_to_create_bulk_term_docs = 0
+        timers = {
+            'timer': 0,
+            'timer1': 0,
+            'timer2': 0,
+            'timer3': 0,
+            'timer4': 0
+        }
+        for resource in resources:
+            s = time()
             document, terms = resource.get_documents_to_index(
                 fetchTiles=False, datatype_factory=datatype_factory, node_datatypes=node_datatypes, config=primaryDescriptorsFunctionConfig, graph_nodes=graph_nodes, timers=timers)
             # document['root_ontology_class'] = resource.get_root_ontology()
             documents.append(se.create_bulk_item(
                 index='resources', id=document['resourceinstanceid'], data=document))
+            time_to_create_bulk_docs = time_to_create_bulk_docs + (time()-s)
+            s = time()
             for term in terms:
                 term_list.append(se.create_bulk_item(
                     index='terms', id=term['_id'], data=term['_source']))
+            time_to_create_bulk_term_docs = time_to_create_bulk_term_docs + (time()-s)
+
+        # print "timer: %s" % datetime.timedelta(seconds=timers['timer'])
+        # print "timer1: %s" % datetime.timedelta(seconds=timers['timer1'])
+        # print "timer2: %s" % datetime.timedelta(seconds=timers['timer2'])
+        # print "timer3: %s" % datetime.timedelta(seconds=timers['timer3'])
+        # print "timer4: %s" % datetime.timedelta(seconds=timers['timer4'])
+        # print "time to get documents to index: %s" % datetime.timedelta(seconds=time_to_get_docs)
+        # print "time to get root ontology: %s" % datetime.timedelta(seconds=time_to_get_root_ontology)
+        # print "time to create bulk docs: %s" % datetime.timedelta(seconds=time_to_create_bulk_docs)
+        # print "time to create bulk term docs: %s" % datetime.timedelta(seconds=time_to_create_bulk_term_docs)
+        start = time()
 
         if not settings.STREAMLINE_IMPORT:
             for tile in tiles:
                 tile.save_edit(edit_type='tile create', new_value=tile.data)
         # bulk index the resources, tiles and terms
+
+        #print documents[0]
         se.bulk_index(documents)
         se.bulk_index(term_list)
+        #print "time to index resources:%s" % datetime.timedelta(seconds=time() - start)
 
     def index(self):
         """
@@ -246,6 +292,7 @@ class Resource(models.ResourceInstance):
             for nodeid, nodevalue in tile.data.iteritems():
                 datatype = node_datatypes[nodeid]
                 if nodevalue != '' and nodevalue != [] and nodevalue != {} and nodevalue is not None:
+                    s = time()
                     datatype_instance = datatype_factory.get_instance(datatype)
                     if str(tile.nodegroup_id) in config:
                         if 'name' in config[tile.nodegroup_id]:
@@ -273,6 +320,7 @@ class Resource(models.ResourceInstance):
                     for index, term in enumerate(node_terms):
                         terms.append({'_id': unicode(nodeid)+unicode(tile.tileid)+unicode(index), '_source': {'value': term, 'nodeid': nodeid,
                                                                                                               'nodegroupid': tile.nodegroup_id, 'tileid': tile.tileid, 'resourceinstanceid': tile.resourceinstance_id, 'provisional': False}})
+                    timers['timer3'] = timers['timer3'] + (time()-s)
 
             if tile.provisionaledits is not None:
                 provisionaledits = tile.provisionaledits
@@ -293,7 +341,6 @@ class Resource(models.ResourceInstance):
                                     for index, term in enumerate(node_terms):
                                         terms.append({'_id': unicode(nodeid)+unicode(tile.tileid)+unicode(index), '_source': {'value': term, 'nodeid': nodeid,
                                                                                                                               'nodegroupid': tile.nodegroup_id, 'tileid': tile.tileid, 'resourceinstanceid': tile.resourceinstance_id, 'provisional': True}})
-
         return document, terms
 
     def delete(self, user={}, note=''):

@@ -36,8 +36,12 @@ from django.utils.module_loading import import_string
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.core import management
+<<<<<<< HEAD
 from datetime import datetime
 from time import time
+=======
+from datetime import datetime, timedelta
+>>>>>>> 3c783132fb9920d83fb588aa7cb36229a22468b3
 '''
 ARCHES - a program developed to inventory and manage immovable cultural heritage.
 Copyright (C) 2013 J. Paul Getty Trust and World Monuments Fund
@@ -573,6 +577,9 @@ class Command(BaseCommand):
         def load_concepts(package_dir, overwrite, stage, verbose=False):
             file_types = ['*.xml', '*.rdf']
 
+            from time import time
+            start = time()
+
             concept_data = []
             for file_type in file_types:
                 concept_data.extend(glob.glob(os.path.join(
@@ -601,6 +608,8 @@ class Command(BaseCommand):
                     bar_collections.update(item_id=path)
                 elif verbose is True:
                     print path
+
+            print 'Total time to load concepts: %s s' % (timedelta(seconds=time() - start))
 
         def load_mapbox_styles(style_paths, basemap):
             for path in style_paths:

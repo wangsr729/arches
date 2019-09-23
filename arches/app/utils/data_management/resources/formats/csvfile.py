@@ -6,6 +6,7 @@ import os
 import sys
 import uuid
 import traceback
+from time import time
 from copy import deepcopy
 from format import Writer
 from format import Reader
@@ -332,6 +333,9 @@ class CsvReader(Reader):
 
     def import_business_data(self, business_data=None, mapping=None, overwrite='append', bulk=False, create_concepts=False, create_collections=False):
         # errors = businessDataValidator(self.business_data)
+
+        print "Starting import of business data"
+        self.start = time()
 
         def get_display_nodes(graphid):
             display_nodeids = []

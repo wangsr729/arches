@@ -1205,7 +1205,6 @@ class ConceptValue(object):
             value.save()
             self.category = value.valuetype.category
 
-    
     def bulk_save(self, concept_values):
         values = []
         for concept_value in concept_values:
@@ -1230,8 +1229,8 @@ class ConceptValue(object):
             values.append(value)
 
         models.Value.objects.bulk_create(values)
-    
-    
+
+
     def delete(self):
         if self.id != '':
             newvalue = models.Value.objects.get(pk=self.id)

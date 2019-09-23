@@ -126,7 +126,7 @@ class SKOSReader(object):
                                     language_id=object.language or default_lang,
                                     valuetype_id='prefLabel'
                                 ))
-                                print 'Casting dcterms:title to skos:prefLabel'
+                                # print 'Casting dcterms:title to skos:prefLabel'
                             elif predicate == DCTERMS.description:
                                 # concept_scheme.addvalue({'id': val['value_id'], 'value': val[
                                 #                         'value'], 'language': object.language or default_lang, 'type': 'scopeNote', 'category': value_type.category})
@@ -137,7 +137,7 @@ class SKOSReader(object):
                                     language_id=object.language or default_lang,
                                     valuetype_id='scopeNote'
                                 ))
-                                print 'Casting dcterms:description to skos:scopeNote'
+                                # print 'Casting dcterms:description to skos:scopeNote'
                             elif predicate == DCTERMS.identifier:
                                 identifier = self.unwrapJsonLiteral(str(object))
                         except:

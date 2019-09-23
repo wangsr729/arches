@@ -142,7 +142,7 @@ class Resource(models.ResourceInstance):
         return tiles
 
     @staticmethod
-    def bulk_save(resources):
+    def bulk_save(resources, primaryDescriptorsFunctionConfig, graph_nodes):
         """
         Saves and indexes a list of resources
 
@@ -170,16 +170,17 @@ class Resource(models.ResourceInstance):
         for resource in resources:
             resource.save_edit(edit_type='create')
             document, terms = resource.get_documents_to_index(
-                fetchTiles=False, datatype_factory=datatype_factory, node_datatypes=node_datatypes)
-            document['root_ontology_class'] = resource.get_root_ontology()
+                fetchTiles=False, datatype_factory=datatype_factory, node_datatypes=node_datatypes, config=primaryDescriptorsFunctionConfig, graph_nodes=graph_nodes, timers=timers)
+            # document['root_ontology_class'] = resource.get_root_ontology()
             documents.append(se.create_bulk_item(
                 index='resources', id=document['resourceinstanceid'], data=document))
             for term in terms:
                 term_list.append(se.create_bulk_item(
                     index='terms', id=term['_id'], data=term['_source']))
 
-        for tile in tiles:
-            tile.save_edit(edit_type='tile create', new_value=tile.data)
+        if not settings.STREAMLINE_IMPORT:
+            for tile in tiles:
+                tile.save_edit(edit_type='tile create', new_value=tile.data)
         # bulk index the resources, tiles and terms
         se.bulk_index(documents)
         se.bulk_index(term_list)
@@ -202,7 +203,7 @@ class Resource(models.ResourceInstance):
             for term in terms:
                 se.index_data('terms', body=term['_source'], id=term['_id'])
 
-    def get_documents_to_index(self, fetchTiles=True, datatype_factory=None, node_datatypes=None):
+    def get_documents_to_index(self, fetchTiles=True, datatype_factory=None, node_datatypes=None, config=None, graph_nodes=None, timers={}):
         """
         Gets all the documents nessesary to index a single resource
         returns a tuple of a document and list of terms
@@ -214,7 +215,17 @@ class Resource(models.ResourceInstance):
 
         """
 
-        document = JSONSerializer().serializeToPython(self)
+        if settings.STREAMLINE_IMPORT:
+            document = {}
+            document["displaydescription"] = None
+            document["resourceinstanceid"] = str(self.resourceinstanceid)
+            document["graph_id"] = str(self.graph.pk)
+            document["map_popup"] = None
+            document["displayname"] = None
+            document["root_ontology_class"] = self.get_root_ontology()
+            document["legacyid"] = self.legacyid
+        else:
+            document = JSONSerializer().serializeToPython(self)
         tiles = list(models.TileModel.objects.filter(
             resourceinstance=self)) if fetchTiles else self.tiles
         document['tiles'] = tiles
@@ -236,10 +247,29 @@ class Resource(models.ResourceInstance):
                 datatype = node_datatypes[nodeid]
                 if nodevalue != '' and nodevalue != [] and nodevalue != {} and nodevalue is not None:
                     datatype_instance = datatype_factory.get_instance(datatype)
-                    datatype_instance.append_to_document(
-                        document, nodevalue, nodeid, tile)
-                    node_terms = datatype_instance.get_search_terms(
-                        nodevalue, nodeid)
+                    if str(tile.nodegroup_id) in config:
+                        if 'name' in config[tile.nodegroup_id]:
+                            node = graph_nodes[nodeid]
+                            value = datatype_instance.get_display_value(tile, node)
+                            if document["displayname"] is None:
+                                document["displayname"] = config[tile.nodegroup_id]['name']
+                            document["displayname"] = document["displayname"].replace('<%s>' % node.name, value)
+                        if 'description' in config[tile.nodegroup_id]:
+                            node = graph_nodes[nodeid]
+                            value = datatype_instance.get_display_value(tile, node)
+                            if document["displaydescription"] is None:
+                                document["displaydescription"] = config[tile.nodegroup_id]['description']
+                            document["displaydescription"] = document["displaydescription"].replace('<%s>' % node.name, value)
+                        if 'map_popup' in config[tile.nodegroup_id]:
+                            node = graph_nodes[nodeid]
+                            value = datatype_instance.get_display_value(tile, node)
+                            if document["map_popup"] is None:
+                                document["map_popup"] = config[tile.nodegroup_id]['map_popup']
+                            document["map_popup"] = document["map_popup"].replace('<%s>' % node.name, value)
+
+                    datatype_instance.append_to_document(document, nodevalue, nodeid, tile)
+
+                    node_terms = datatype_instance.get_search_terms(nodevalue, nodeid)
                     for index, term in enumerate(node_terms):
                         terms.append({'_id': unicode(nodeid)+unicode(tile.tileid)+unicode(index), '_source': {'value': term, 'nodeid': nodeid,
                                                                                                               'nodegroupid': tile.nodegroup_id, 'tileid': tile.tileid, 'resourceinstanceid': tile.resourceinstance_id, 'provisional': False}})

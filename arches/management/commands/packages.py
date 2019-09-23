@@ -470,6 +470,23 @@ class Command(BaseCommand):
             
                 # start = time()
 
+        def load_ontology():
+            load_default_ontology = True
+            if settings.ONTOLOGY_BASE_NAME != None:
+                if yes is False:
+                    response = raw_input(
+                        'Would you like to load the {0} ontology? (Y/N): '.format(settings.ONTOLOGY_BASE_NAME))
+                    if response.lower() not in ('t', 'true', 'y', 'yes'):
+                        load_default_ontology = False
+            else:
+                load_default_ontology = False
+
+            if load_default_ontology == True:
+                print('loading the {0} ontology'.format(settings.ONTOLOGY_BASE_NAME))
+                extensions = [os.path.join(settings.ONTOLOGY_PATH, x) for x in settings.ONTOLOGY_EXT]
+                management.call_command('load_ontology', source=os.path.join(settings.ONTOLOGY_PATH, settings.ONTOLOGY_BASE),
+                    version=settings.ONTOLOGY_BASE_VERSION, ontology_name=settings.ONTOLOGY_BASE_NAME, id=settings.ONTOLOGY_BASE_ID, extensions=','.join(extensions), verbosity=0)
+
         def load_system_settings(package_dir):
             update_system_settings = True
             if os.path.exists(settings.SYSTEM_SETTINGS_LOCAL_PATH):
@@ -706,6 +723,9 @@ class Command(BaseCommand):
         def load_card_components(package_dir):
             load_extensions(package_dir, 'card_components', 'card_component')
 
+        def load_search_components(package_dir):
+            load_extensions(package_dir, 'search', 'search')
+
         def load_plugins(package_dir):
             load_extensions(package_dir, 'plugins', 'plugin')
 
@@ -767,6 +787,7 @@ class Command(BaseCommand):
             if load_project_extensions.lower() in ('t', 'true', 'y', 'yes'):
                 load_project_extensions = True
 
+        load_ontology()
         print('loading package_settings.py')
         load_package_settings(package_location)
         print('loading preliminary sql')
@@ -777,6 +798,8 @@ class Command(BaseCommand):
         load_widgets(package_location)
         print('loading card components')
         load_card_components(package_location)
+        print('loading search components')
+        load_search_components(package_location)
         print('loading plugins')
         load_plugins(package_location)
         print('loading reports')

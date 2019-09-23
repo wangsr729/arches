@@ -1,10 +1,22 @@
 define([], function() {
-    return function(resourceId, source, sourceLayer) {
-        var color = "#f0c200";
+    return function(resourceId, source, sourceLayer, selectedResourceIds, visible) {
+        var color = "#F0C200";
+        var strokecolor = "#fff";
+        var overviewzoom = 11;
+        var minzoom = 15;
+        if (selectedResourceIds && selectedResourceIds.length > 0) {
+            color = [
+                'match',
+                ['get', 'resourceinstanceid'],
+                selectedResourceIds, "#2F14A6",
+                color
+            ];
+        }
         if (!source) return [];
         var layers = [{
             "id": "select-feature-polygon-fill",
             "type": "fill",
+            "minzoom": overviewzoom,
             "filter": ['all',[
                 "==", "$type", "Polygon"
             ], [
@@ -13,14 +25,15 @@ define([], function() {
             "paint": {
                 "fill-color": color,
                 "fill-outline-color": color,
-                "fill-opacity": 0.1
+                "fill-opacity": 0.2
             },
             "layout": {
-                "visibility": "none"
+                "visibility": visible ? "visible": "none"
             }
-        }, {
-            "id": "select-feature-polygon-stroke",
+        },  {
+            "id": "select-feature-polygon-under-stroke",
             "type": "line",
+            "minzoom": minzoom,
             "filter": ['all',[
                 "==", "$type", "Polygon"
             ], [
@@ -29,7 +42,25 @@ define([], function() {
             "layout": {
                 "line-cap": "round",
                 "line-join": "round",
-                "visibility": "none"
+                "visibility": visible ? "visible": "none"
+            },
+            "paint": {
+                "line-color": strokecolor,
+                "line-width": 4
+            }
+        }, {
+            "id": "select-feature-polygon-stroke",
+            "type": "line",
+            "minzoom": overviewzoom,
+            "filter": ['all',[
+                "==", "$type", "Polygon"
+            ], [
+                "!=", "resourceinstanceid", resourceId
+            ]],
+            "layout": {
+                "line-cap": "round",
+                "line-join": "round",
+                "visibility": visible ? "visible": "none"
             },
             "paint": {
                 "line-color": color,
@@ -38,6 +69,7 @@ define([], function() {
         }, {
             "id": "select-feature-line",
             "type": "line",
+            "minzoom": minzoom,
             "filter": ['all',[
                 "==", "$type", "LineString"
             ], [
@@ -46,7 +78,7 @@ define([], function() {
             "layout": {
                 "line-cap": "round",
                 "line-join": "round",
-                "visibility": "none"
+                "visibility": visible ? "visible": "none"
             },
             "paint": {
                 "line-color": color,
@@ -55,6 +87,7 @@ define([], function() {
         }, {
             "id": "select-feature-point-point-stroke",
             "type": "circle",
+            "minzoom": minzoom,
             "filter": ['all',[
                 "==", "$type", "Point"
             ], [
@@ -66,22 +99,23 @@ define([], function() {
                 "circle-color": "#fff"
             },
             "layout": {
-                "visibility": "none"
+                "visibility": visible ? "visible": "none"
             }
         }, {
             "id": "select-feature-point",
             "type": "circle",
+            "minzoom": minzoom,
             "filter": ['all',[
                 "==", "$type", "Point"
             ], [
                 "!=", "resourceinstanceid", resourceId
             ]],
             "paint": {
-                "circle-radius": 3,
+                "circle-radius": 4,
                 "circle-color": color
             },
             "layout": {
-                "visibility": "none"
+                "visibility": visible ? "visible": "none"
             }
         }];
         layers.forEach(function(layer) {

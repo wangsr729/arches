@@ -14,6 +14,7 @@ define([
         var geojsonSourceFactory = function() {
             return {
                 "type": "geojson",
+                "generateId": true,
                 "data": {
                     "type": "FeatureCollection",
                     "features": []
@@ -35,24 +36,24 @@ define([
 
         this.map = ko.isObservable(params.map) ? params.map : ko.observable();
         this.popupTemplate = popupTemplate;
-        this.basemaps = [];
-        this.overlays = ko.observableArray();
-        this.activeBasemap = ko.observable();
+        this.basemaps = params.basemaps || [];
+        this.overlays = params.overlaysObservable || ko.observableArray();
+        this.activeBasemap = params.activeBasemap || ko.observable();
         this.activeTab = ko.observable(params.activeTab);
         this.hideSidePanel = function() {
             self.activeTab(undefined);
         };
         this.activeTab.subscribe(function() {
             var map = self.map();
-            if (map) setTimeout(function() { map.resize(); }, 1);
+            if (map && map.getStyle()) setTimeout(function() { map.resize(); }, 1);
         });
 
         mapLayers.forEach(function(layer) {
             if (!layer.isoverlay) {
-                self.basemaps.push(layer);
-                if (layer.addtomap) self.activeBasemap(layer);
+                if (!params.basemaps) self.basemaps.push(layer);
+                if (layer.addtomap && !params.activeBasemap) self.activeBasemap(layer);
             }
-            else {
+            else if (!params.overlaysObservable) {
                 layer.opacity = ko.observable(layer.addtomap ? 100 : 0);
                 layer.onMap = ko.pureComputed({
                     read: function() { return layer.opacity() > 0; },
@@ -168,8 +169,10 @@ define([
         this.updateLayers = function(layers) {
             var map = self.map();
             var style = map.getStyle();
-            style.layers = layers;
-            map.setStyle(style);
+            if (style) {
+                style.layers = layers;
+                map.setStyle(style);
+            }
         };
 
         this.isFeatureClickable = function(feature) {
@@ -185,7 +188,8 @@ define([
                     data = _.defaults(data, {
                         'loading': true,
                         'displayname': '',
-                        'graph_name': ''
+                        'graph_name': '',
+                        'map_popup': ''
                     });
                     data = ko.mapping.fromJS(data);
                     data.reportURL = arches.urls.resource_report;
@@ -213,9 +217,9 @@ define([
                 self.getPopupData(feature),
                 self.popup._content
             );
-            map.setFeatureState(feature, { selected: true });
+            if (map.getStyle()) map.setFeatureState(feature, { selected: true });
             self.popup.on('close', function() {
-                map.setFeatureState(feature, { selected: false });
+                if (map.getStyle()) map.setFeatureState(feature, { selected: false });
                 self.popup = undefined;
             });
         };
@@ -224,7 +228,7 @@ define([
             map.on('load', function() {
                 map.addControl(new mapboxgl.NavigationControl(), 'top-left');
                 map.addControl(new mapboxgl.FullscreenControl({
-                    container: $(map.getContainer()).closest('.map-card-wrapper')[0]
+                    container: $(map.getContainer()).closest('.workbench-card-wrapper')[0]
                 }), 'top-left');
                 map.addControl(new MapboxGeocoder({
                     accessToken: mapboxgl.accessToken,
@@ -237,12 +241,13 @@ define([
 
                 var hoverFeature;
                 map.on('mousemove', function(e) {
-                    if (hoverFeature) map.setFeatureState(hoverFeature, { hover: false });
+                    var style = map.getStyle();
+                    if (hoverFeature && style) map.setFeatureState(hoverFeature, { hover: false });
                     hoverFeature = _.find(
                         map.queryRenderedFeatures(e.point),
                         self.isFeatureClickable
                     );
-                    if (hoverFeature) map.setFeatureState(hoverFeature, { hover: true });
+                    if (hoverFeature && style) map.setFeatureState(hoverFeature, { hover: true });
                     map.getCanvas().style.cursor = hoverFeature ? 'pointer' : '';
                 });
 
@@ -253,6 +258,28 @@ define([
                 });
 
                 self.map(map);
+                if (params.fitBounds){
+                    var padding = 40;
+                    var activeTab = self.activeTab();
+                    var options = {
+                        padding: {
+                            top: padding,
+                            left: padding + (activeTab ? 200: 0),
+                            bottom: padding,
+                            right: padding + (activeTab ? 200: 0)
+                        },
+                        animate: false
+                    };
+                    var bounds = params.fitBounds();
+                    if (bounds) {
+                        map.fitBounds(bounds, options);
+                    } else {
+                        var fitBounds = params.fitBounds.subscribe(function(bounds) {
+                            map.fitBounds(bounds, options);
+                            fitBounds.dispose();
+                        });
+                    }
+                }
                 setTimeout(function() { map.resize(); }, 1);
             });
         };

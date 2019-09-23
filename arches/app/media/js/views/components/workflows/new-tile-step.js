@@ -11,12 +11,15 @@ define([
 ], function(_, $, arches, ko, koMapping, GraphModel, CardViewModel, ProvisionalTileViewModel, AlertViewModel) {
     function viewModel(params) {
         var self = this;
-        if (!params.resourceid() && params.requirements){
-            params.resourceid(params.requirements.resourceid);
-            params.tileid(params.requirements.tileid);
+        if (params.workflow) {
+            if (!params.resourceid()) {
+                params.resourceid(params.workflow.state.resourceid);
+            }
+            if (params.workflow.state.steps[params._index]) {
+                params.tileid(params.workflow.state.steps[params._index].tileid);
+            }
         }
         var url = arches.urls.api_card + (ko.unwrap(params.resourceid) || ko.unwrap(params.graphid));
-
         this.card = ko.observable();
         this.tile = ko.observable();
         this.loading = params.loading || ko.observable(false);
@@ -123,7 +126,7 @@ define([
                                 self.tile(tile);
                             }
                         });
-                    } else {
+                    } else if (ko.unwrap(params.createTile) !== false) {
                         self.tile(item.getNewTile());
                     }
                 }
@@ -149,12 +152,27 @@ define([
         };
 
         params.tile = self.tile;
-        params.stateProperties = function(){
+
+        params.getStateProperties = function(){
+            // Collects those properties that you want to set to the state.
+            var wastebin = !!(ko.unwrap(params.wastebin)) ? koMapping.toJS(params.wastebin) : undefined;
+            if (wastebin && ko.unwrap(wastebin.hasOwnProperty('resourceid'))) {
+                wastebin.resourceid = ko.unwrap(params.resourceid);
+            }
             return {
                 resourceid: ko.unwrap(params.resourceid),
                 tile: !!(ko.unwrap(params.tile)) ? koMapping.toJS(params.tile().data) : undefined,
-                tileid: !!(ko.unwrap(params.tile)) ? ko.unwrap(params.tile().tileid): undefined
+                tileid: !!(ko.unwrap(params.tile)) ? ko.unwrap(params.tile().tileid): undefined,
+                wastebin: wastebin
             };
+        };
+
+
+        this.setStateProperties = function(){
+            //Sets properties in getStateProperties to the state.
+            if (params.workflow) {
+                params.workflow.state.steps[params._index] = params.getStateProperties();
+            }
         };
 
         self.onSaveSuccess = function(tiles) {
@@ -164,6 +182,10 @@ define([
                 params.resourceid(tile.resourceinstance_id);
                 params.tileid(tile.tileid);
                 self.resourceId(tile.resourceinstance_id);
+            }
+            self.setStateProperties();
+            if (params.workflow) {
+                params.workflow.updateUrl();
             }
             if (self.completeOnSave === true) { self.complete(true); }
         };

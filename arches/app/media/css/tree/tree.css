@@ -205,8 +205,8 @@ a.filtered > span:hover {
 }
 
 .jstree-default .func-node {
-    background: #0ab1fc;
-    color: #fff;
+    background: #72D3C9;
+    color: #01766A;
     border-width: 2px;
 }
 
@@ -237,6 +237,19 @@ a.filtered > span:hover {
 
 .jstree-node-action-icon {
     display: none;
+}
+
+.jstree-leading-icon + .tooltip {
+    margin-left: 25px;
+}
+
+.jstree-leading-icon + .tooltip.top .tooltip-arrow  {
+    margin-left: -28px;
+}
+
+.jstree-leading-icon {
+    padding-right: 2px;
+    padding-left: 5px;
 }
 
 .jstree-clicked .jstree-node-action-icon {

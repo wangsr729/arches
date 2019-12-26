@@ -34,7 +34,6 @@
                                     <!-- /ko -->
                                     <label class="col-xs-12 control-label widget-input-label">
                                         {% trans "Node Name" %}
-
                                     </label>
                                 </div>
 
@@ -100,10 +99,10 @@
                     </form>
                 </div>
 
-                <div class="graph-designer-header">{% trans 'Node Data Type and Settings' %}</div>
+                <div class="graph-designer-header">{% trans 'Node Data Type and Configuration' %}</div>
                 <div class="graph-settings-panel-body fade in">
                     <form class="widgets">
-                        <div class="row widget-container">
+                        <div class="row widget-container data-type">
                             <div class="form-group">
                                 <div class="relative">
                                     <label class="col-xs-12 control-label widget-input-label">
@@ -118,7 +117,7 @@
                         </div>
 
                         <!-- ko if: node().datatypeConfigComponent -->
-                        <div class="row widget-container">
+                        <div class="row widget-container data-type-config">
                             <div class="form-group">
                                 <div class="col-xs-12 crm-selector">
                                     <div data-bind='component: {
@@ -129,7 +128,12 @@
                             </div>
                         </div>
                         <!-- /ko -->
+                    </form>
+                </div>
 
+                <div class="graph-designer-header" style="margin-top: 20px;">{% trans 'Node Settings' %}</div>
+                <div class="graph-settings-panel-body fade in">
+                    <form>
                         <!-- ko if: node().datatypeIsSearchable() -->
                         <div class="row widget-container graph-settings-switch">
                             <div class="form-group">
@@ -170,6 +174,30 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- ko if: node() && node().datatypeDataBearing() -->
+                        <div class="row widget-container graph-settings-switch">
+                            <div class="form-group">
+                                <div class="relative">
+                                    <label class="col-xs-12 control-label widget-input-label">
+                                        <span class="switch switch-small arches-switch" data-bind="css: {'on': node().exportable()}, click: function(){node().exportable(!node().exportable())}"><small></small></span>
+                                    </label>
+                                </div>
+
+                                <div class="col-xs-12">
+                                    <p class="control-label graph-settings-switch-label">
+                                    {% trans "Export via Search Results" %}
+                                    </p>
+                                    <span class="graph-settings-switch-subtitle">
+                                        {% trans "Provide a field name for shapefiles. " %} <strong>{% trans "Name will be truncated to 10 characters to meet shapefile requirements." %}</strong>
+                                    </span>
+                                    <div class="exportable-field-name">
+                                        <input class="form-control input-md widget-input" placeholder="{% trans 'shapefile fieldname' %}" type="text" data-bind="textInput: node().fieldname, disable: !node().exportable(), css: {'disabled': !node().exportable()}"></input>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!--/ko-->
 
                         <!-- ko if: node() && !isResourceTopNode() && displayMakeCard() === true -->
                         <div class="row widget-container graph-settings-switch">

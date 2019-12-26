@@ -43,8 +43,12 @@
                 <h4>{% trans "Uploaded Files" %}</h4>
                 <div class="file-upload-options">
                     <!--ko if: filesJSON().length > 1-->
-                    <input data-bind="textInput: filter" type="text" placeholder="{% trans "find a file..." %}" class="file-upload-filter">
+                    <input data-bind="textInput: filter" type="text" placeholder="{% trans 'find a file...' %}" class="file-upload-filter">
                     <!-- /ko -->
+
+                    <!-- Clear Search -->
+                    <span class="file-upload-clear-filter" data-bind="visible: filter().length > 0, click: function() { filter(''); }"><i class="fa fa-times-circle"></i></span>
+
                     <!-- ko if: filter() -->
                     <span data-bind="text: filteredList().length+' out of '+filesJSON().length+' files match filter'"></span>
                     <!-- /ko -->
@@ -151,12 +155,6 @@
     <input type="number" placeholder="{% trans "Max File Size (mb)" %}" id="" class="form-control input-md widget-input" data-bind="value: maxFilesize">
 </div>
 
-<div class="control-label">
-    {% trans "Max Uploadable Files" %}
-</div>
-<div class="col-xs-12 pad-no crud-widget-container">
-    <input type="number" placeholder="{% trans "Max Files" %}" id="" class="form-control input-md widget-input" data-bind="value: maxFiles">
-</div>
 {% endblock config_form %}
 
 {% block report %}

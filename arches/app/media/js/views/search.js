@@ -94,7 +94,7 @@ define([
             this.viewModel.sharedStateObject = new CommonSearchViewModel();
             this.viewModel.total = ko.observable();
             _.extend(this, this.viewModel.sharedStateObject);
-
+            this.viewModel.sharedStateObject.total = this.viewModel.total;
             this.queryString = ko.computed(function() {
                 return JSON.stringify(this.query());
             }, this);
@@ -104,7 +104,7 @@ define([
             }, this);
 
             BaseManagerView.prototype.initialize.call(this, options);
-            
+
             this.doQuery();
         },
 
@@ -134,7 +134,7 @@ define([
                     }, this);
                     this.viewModel.sharedStateObject.searchResults.timestamp(response.timestamp);
                     this.viewModel.sharedStateObject.userIsReviewer(response.reviewer);
-                    this.viewModel.total(response.results.hits.total.value);
+                    this.viewModel.total(response.total_results);
                     this.viewModel.alert(false);
                 },
                 error: function(response, status, error) {

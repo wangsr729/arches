@@ -140,9 +140,11 @@ class NumberDataType(BaseDataType):
         errors = []
 
         try:
+            if value == "":
+                value = None
             if value is not None:
                 decimal.Decimal(value)
-        except Exception as e:
+        except Exception:
             dt = self.datatype_model.datatype
             errors.append(
                 {
@@ -173,11 +175,11 @@ class NumberDataType(BaseDataType):
                 if value["op"] != "eq":
                     operators = {"gte": None, "lte": None, "lt": None, "gt": None}
                     operators[value["op"]] = value["val"]
-                    search_query = Range(field="tiles.data.%s" % (str(node.pk)), **operators)
                 else:
-                    search_query = Match(field="tiles.data.%s" % (str(node.pk)), query=value["val"], type="phrase_prefix")
+                    operators = {"gte": value["val"], "lte": value["val"]}
+                search_query = Range(field="tiles.data.%s" % (str(node.pk)), **operators)
                 query.must(search_query)
-        except KeyError as e:
+        except KeyError:
             pass
 
     def is_a_literal_in_rdf(self):
@@ -205,6 +207,9 @@ class NumberDataType(BaseDataType):
             return value[0]  # should already be cast as a number in the JSON
         except (AttributeError, KeyError) as e:
             pass
+
+    def default_es_mapping(self):
+        return {"type": "long"}
 
 
 class BooleanDataType(BaseDataType):
@@ -249,6 +254,9 @@ class BooleanDataType(BaseDataType):
             return value[0]
         except (AttributeError, KeyError) as e:
             pass
+
+    def default_es_mapping(self):
+        return {"type": "boolean"}
 
 
 class DateDataType(BaseDataType):
@@ -313,9 +321,9 @@ class DateDataType(BaseDataType):
                 if value["op"] != "eq":
                     operators = {"gte": None, "lte": None, "lt": None, "gt": None}
                     operators[value["op"]] = date_value
-                    search_query = Range(field="tiles.data.%s" % (str(node.pk)), **operators)
                 else:
-                    search_query = Match(field="tiles.data.%s" % (str(node.pk)), query=date_value, type="phrase_prefix")
+                    operators = {"gte": date_value, "lte": date_value}
+                search_query = Range(field="tiles.data.%s" % (str(node.pk)), **operators)
                 query.must(search_query)
         except KeyError as e:
             pass
@@ -345,6 +353,9 @@ class DateDataType(BaseDataType):
             return value[0]
         except (AttributeError, KeyError) as e:
             pass
+
+    def default_es_mapping(self):
+        return {"type": "date"}
 
 
 class EDTFDataType(BaseDataType):
@@ -439,6 +450,9 @@ class EDTFDataType(BaseDataType):
                 add_date_to_doc(query, result)
         else:
             add_date_to_doc(query, edtf)
+
+    def default_es_mapping(self):
+        return {"properties": {"value": {"type": "text", "fields": {"keyword": {"ignore_above": 256, "type": "keyword"}}}}}
 
 
 class GeojsonFeatureCollectionDataType(BaseDataType):
@@ -999,6 +1013,10 @@ class GeojsonFeatureCollectionDataType(BaseDataType):
             """
             cursor.execute(sql)
 
+    def default_es_mapping(self):
+        # let ES dyanamically map this datatype
+        return
+
 
 class FileListDataType(BaseDataType):
     def __init__(self, model=None):
@@ -1050,16 +1068,29 @@ class FileListDataType(BaseDataType):
             errors.append({"type": "ERROR", "message": f"datatype: {dt}, value: {value} - {e} ."})
         return errors
 
+    def append_to_document(self, document, nodevalue, nodeid, tile, provisional=False):
+        try:
+            for f in tile.data[str(nodeid)]:
+                val = {"string": f["name"], "nodegroup_id": tile.nodegroup_id, "provisional": provisional}
+                document["strings"].append(val)
+        except KeyError as e:
+            for k, pe in tile.provisionaledits.items():
+                for f in pe["value"][nodeid]:
+                    val = {"string": f["name"], "nodegroup_id": tile.nodegroup_id, "provisional": provisional}
+                    document["strings"].append(val)
+
     def get_display_value(self, tile, node):
         data = self.get_tile_data(tile)
         files = data[str(node.pk)]
         file_list_str = ""
-        for f in files:
-            file_list_str = file_list_str + f["name"] + " | "
+        if files is not None:
+            for f in files:
+                file_list_str = file_list_str + f["name"] + " | "
 
         return file_list_str
 
     def handle_request(self, current_tile, request, node):
+        # this does not get called when saving data from the mobile app
         previously_saved_tile = models.TileModel.objects.filter(pk=current_tile.tileid)
         user = request.user
         if hasattr(request.user, "userprofile") is not True:
@@ -1254,9 +1285,12 @@ class FileListDataType(BaseDataType):
                 if attachment is not None:
                     attachment_file = attachment.read()
                     file_data = ContentFile(attachment_file, name=file["name"])
-                    file_model = models.File()
-                    file_model.path = file_data
-                    file_model.pk = file["file_id"]
+                    file_model, created = models.File.objects.get_or_create(fileid=file["file_id"])
+
+                    if created:
+                        file_model.path = file_data
+
+                    file_model.tile = tile
                     file_model.save()
                     if file["name"] == file_data.name and "url" not in list(file.keys()):
                         file["file_id"] = str(file_model.pk)
@@ -1264,7 +1298,6 @@ class FileListDataType(BaseDataType):
                         file["status"] = "uploaded"
                         file["accepted"] = True
                         file["size"] = file_data.size
-                    # db.delete_attachment(couch_doc, file['name'])
 
         except KeyError as e:
             pass
@@ -1272,6 +1305,17 @@ class FileListDataType(BaseDataType):
 
     def collects_multiple_values(self):
         return True
+
+    def default_es_mapping(self):
+        return {
+            "properties": {
+                "file_id": {"type": "text", "fields": {"keyword": {"ignore_above": 256, "type": "keyword"}}},
+                "name": {"type": "text", "fields": {"keyword": {"ignore_above": 256, "type": "keyword"}}},
+                "type": {"type": "text", "fields": {"keyword": {"ignore_above": 256, "type": "keyword"}}},
+                "url": {"type": "text", "fields": {"keyword": {"ignore_above": 256, "type": "keyword"}}},
+                "status": {"type": "text", "fields": {"keyword": {"ignore_above": 256, "type": "keyword"}}},
+            }
+        }
 
 
 class BaseDomainDataType(BaseDataType):

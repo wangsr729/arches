@@ -44,6 +44,14 @@ define([
 
         MapEditorViewModel.apply(this, [params]);
 
+        this.expandSidePanel = ko.computed(function(){
+            if (self.tile) {
+                return self.tile.hasprovisionaledits() && self.reviewer === true;
+            } else {
+                return false;
+            }
+        });
+
         if (!this.card.overlaysObservable) {
             this.card.overlaysObservable = this.overlays;
             this.card.activeBasemap = this.activeBasemap;
